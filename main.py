@@ -31,6 +31,7 @@ st.markdown("""
     .stTextArea textarea {
         background-color: #f9f9f9;
         font-size: 16px;
+        color: #333;
     }
     .prediction-box {
         padding: 20px;
