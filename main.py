@@ -1,17 +1,39 @@
 # Step 1: Import Libraries and Load the Model
 import numpy as np
 import tensorflow as tf
+from tensorflow import keras
 from tensorflow.keras.datasets import imdb
 from tensorflow.keras.preprocessing import sequence
-from tensorflow.keras.models import load_model
 import streamlit as st
 
 # Load the IMDB dataset word index
 word_index = imdb.get_word_index()
 reverse_word_index = {value: key for key, value in word_index.items()}
 
-# Load the pre-trained model
-model = load_model('simple_rnn_imdb.h5')
+# Custom loader to skip incompatible arguments
+def load_model_with_custom_objects():
+    # Define a custom SimpleRNN class that accepts and ignores 'time_major'
+    class CustomSimpleRNN(keras.layers.SimpleRNN):
+        def __init__(self, *args, **kwargs):
+            # Remove the problematic parameter if it exists
+            if 'time_major' in kwargs:
+                kwargs.pop('time_major')
+            super().__init__(*args, **kwargs)
+    
+    # Load the model with the custom objects
+    model = keras.models.load_model(
+        'simple_rnn_imdb.h5',
+        custom_objects={'SimpleRNN': CustomSimpleRNN}
+    )
+    return model
+
+# Load the model with custom handling
+try:
+    model = load_model_with_custom_objects()
+    st.success("Model loaded successfully!")
+except Exception as e:
+    st.error(f"Failed to load model: {str(e)}")
+    st.stop()
 
 # Step 2: Helper Functions
 def decode_review(encoded_review):
