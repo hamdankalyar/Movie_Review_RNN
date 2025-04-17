@@ -1,54 +1,13 @@
-# Step 1: Import Libraries and Load the Model
+# Step 1: Set Page Configuration - MUST BE FIRST!
+import streamlit as st
+st.set_page_config(page_title="IMDB Sentiment Analyzer", page_icon="🎬", layout="centered")
+
+# Step 2: Import Libraries
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.datasets import imdb
 from tensorflow.keras.preprocessing import sequence
-import streamlit as st
-
-# Load the IMDB dataset word index
-word_index = imdb.get_word_index()
-reverse_word_index = {value: key for key, value in word_index.items()}
-
-# Custom loader to skip incompatible arguments
-def load_model_with_custom_objects():
-    # Define a custom SimpleRNN class that accepts and ignores 'time_major'
-    class CustomSimpleRNN(keras.layers.SimpleRNN):
-        def __init__(self, *args, **kwargs):
-            # Remove the problematic parameter if it exists
-            if 'time_major' in kwargs:
-                kwargs.pop('time_major')
-            super().__init__(*args, **kwargs)
-    
-    # Load the model with the custom objects
-    model = keras.models.load_model(
-        'simple_rnn_imdb.h5',
-        custom_objects={'SimpleRNN': CustomSimpleRNN}
-    )
-    return model
-
-# Load the model with custom handling
-try:
-    model = load_model_with_custom_objects()
-    st.success("Model loaded successfully!")
-except Exception as e:
-    st.error(f"Failed to load model: {str(e)}")
-    st.stop()
-
-# Step 2: Helper Functions
-def decode_review(encoded_review):
-    return ' '.join([reverse_word_index.get(i - 3, '?') for i in encoded_review])
-
-def preprocess_text(text):
-    words = text.lower().split()
-    encoded_review = [word_index.get(word, 2) + 3 for word in words]
-    padded_review = sequence.pad_sequences([encoded_review], maxlen=500)
-    return padded_review
-
-# ============== Streamlit App ==============
-
-# Page configuration
-st.set_page_config(page_title="IMDB Sentiment Analyzer", page_icon="🎬", layout="centered")
 
 # Custom CSS
 st.markdown("""
@@ -88,12 +47,52 @@ st.markdown("""
 st.markdown('<div class="title">🎬 IMDB Movie Review Analyzer</div>', unsafe_allow_html=True)
 st.markdown('<div class="subtitle">Enter a movie review below to detect whether it\'s <b>Positive</b> or <b>Negative</b>.</div>', unsafe_allow_html=True)
 
+# Step 3: Load the IMDB dataset word index
+with st.spinner("Loading word index..."):
+    word_index = imdb.get_word_index()
+    reverse_word_index = {value: key for key, value in word_index.items()}
+
+# Custom loader to skip incompatible arguments
+def load_model_with_custom_objects():
+    # Define a custom SimpleRNN class that accepts and ignores 'time_major'
+    class CustomSimpleRNN(keras.layers.SimpleRNN):
+        def __init__(self, *args, **kwargs):
+            # Remove the problematic parameter if it exists
+            if 'time_major' in kwargs:
+                kwargs.pop('time_major')
+            super().__init__(*args, **kwargs)
+    
+    # Load the model with the custom objects
+    model = keras.models.load_model(
+        'simple_rnn_imdb.h5',
+        custom_objects={'SimpleRNN': CustomSimpleRNN}
+    )
+    return model
+
+# Load the model with custom handling
+with st.spinner("Loading model..."):
+    try:
+        model = load_model_with_custom_objects()
+        st.success("Model loaded successfully!")
+    except Exception as e:
+        st.error(f"Failed to load model: {str(e)}")
+        st.stop()
+
+# Helper Functions
+def decode_review(encoded_review):
+    return ' '.join([reverse_word_index.get(i - 3, '?') for i in encoded_review])
+
+def preprocess_text(text):
+    words = text.lower().split()
+    encoded_review = [word_index.get(word, 2) + 3 for word in words]
+    padded_review = sequence.pad_sequences([encoded_review], maxlen=500)
+    return padded_review
+
 # User Input
 user_input = st.text_area("✍️ Your Review Here:", height=200)
 
 # Prediction
 if st.button('🔍 Analyze Sentiment'):
-
     if user_input.strip() == "":
         st.warning("Please enter a review before classification.")
     else:
